@@ -1,0 +1,16 @@
+- ruleID: laravel-ocp-rt-00001
+  category: potential
+  effort: 4
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: Shell/process desde PHP
+  message: |
+    exec/shell suele chocar con SCC y con imagenes minimas.
+    Prefiere Jobs, colas Laravel, o contenedores con binarios explicitos.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.php$"
+      pattern: "(?i)\\b(exec|shell_exec|system|passthru|proc_open|popen)\\s*\\("

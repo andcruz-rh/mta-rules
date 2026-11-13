@@ -1,0 +1,86 @@
+- ruleID: dotnet-ocp-net-00001
+  category: mandatory
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: Host/URL de dependencia apuntando a localhost
+  message: |
+    localhost/127.0.0.1 dentro del pod no resuelve Services de DB/Redis/APIs hermanas.
+    Remediacion: DNS del Service (p.ej. my-sql:5432) via env vars del Deployment.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*/appsettings.*\\.json$"
+          pattern: "(?i)(localhost|127\\.0\\.0\\.1)"
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb)$"
+          pattern: "(?i)(https?://(localhost|127\\.0\\.0\\.1)|Server\\s*=\\s*(localhost|127\\.0\\.0\\.1)|Host\\s*=\\s*(localhost|127\\.0\\.0\\.1))"
+
+- ruleID: dotnet-ocp-net-00002
+  category: mandatory
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: Binding a puerto privilegiado 80/443 o UseUrls fijo
+  message: |
+    En .NET 8/10+ / OpenShift escucha en puerto no privilegiado (8080) como USER no-root.
+    Remediacion: ASPNETCORE_HTTP_PORTS=8080 (o ASPNETCORE_URLS=http://+:8080);
+    evita UseUrls hardcodeado; el Service/Route hace el mapping externo.
+    Imagen tipica: mcr.microsoft.com/dotnet/aspnet:10.0 (o :8.0).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb)$"
+          pattern: "(?i)(UseUrls\\s*\\(|ListenAnyIP\\s*\\(\\s*80\\b|Listen\\s*\\([^)]*\\b80\\b|Urls\\.Add\\s*\\(\\s*\"https?://[^\"]*:80)"
+      - builtin.filecontent:
+          filePattern: ".*/(appsettings.*\\.json|launchSettings\\.json)$"
+          pattern: "(?i)(http://(\\+|0\\.0\\.0\\.0|\\*):80\\b|\"applicationUrl\"\\s*:\\s*\"[^\"]*:80[^\"]*\")"
+
+- ruleID: dotnet-ocp-host-00001
+  category: mandatory
+  effort: 4
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=hosting
+  description: Acoplamiento IIS / System.Web / web.config IIS modules
+  message: |
+    IIS + System.Web no es el modelo de hosting en contenedores Linux (.NET Core+ / .NET 10).
+    Remediacion: migrar a ASP.NET Core + Kestrel; usar imagen mcr.microsoft.com/dotnet/aspnet:10.0
+    (Chiseled/Alpine/slim). .NET Framework 4.x implica Windows containers (coste/ops distinto).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb|csproj)$"
+          pattern: "(?i)(\\bSystem\\.Web\\b|Microsoft\\.AspNet\\.Mvc|UseIISIntegration|web\\.config)"
+      - builtin.filecontent:
+          filePattern: ".*/web\\.config$"
+          pattern: "(?i)<(system\\.web|system\\.webServer|aspNetCore)"
+
+- ruleID: dotnet-ocp-host-00002
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=hosting
+  description: Certificados HTTPS de desarrollo montados/embebidos
+  message: |
+    Certificados de desarrollo (~/.aspnet/https, localhost.pfx) no van a produccion.
+    Remediacion: TLS en Route/Ingress (edge) o certificado del cluster; no embeber PFX en la imagen.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb|json|yml|yaml)$"
+          pattern: "(?i)(ASPNETCORE_Kestrel__Certificates|\\.aspnet/https|localhost\\.pfx|Kestrel__Certificates__Default)"
+      - builtin.filecontent:
+          filePattern: ".*/appsettings.*\\.json$"
+          pattern: "(?i)\"Certificates\"\\s*:\\s*\\{[\\s\\S]*\"Path\"\\s*:"

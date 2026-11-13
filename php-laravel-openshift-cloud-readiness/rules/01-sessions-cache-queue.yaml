@@ -1,0 +1,60 @@
+- ruleID: laravel-ocp-sess-00001
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=sessions
+  description: Laravel SESSION_DRIVER=file (no multi-replica)
+  message: |
+    SESSION_DRIVER=file no es cloud-ready con replicas > 1.
+    Remediacion: redis (preferido) o database; inyectar via Secret/ConfigMap.
+    Mitigacion temporal: 1 replica o sticky sessions en Route (no target final).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.env.*"
+          pattern: "(?i)^\\s*SESSION_DRIVER\\s*=\\s*file\\s*$"
+      - builtin.filecontent:
+          filePattern: ".*/config/session\\.php$"
+          pattern: "(?i)'driver'\\s*=>\\s*env\\(\\s*['\"]SESSION_DRIVER['\"]\\s*,\\s*['\"]file['\"]"
+
+- ruleID: laravel-ocp-cache-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=cache
+  description: Laravel CACHE_DRIVER=file
+  message: |
+    CACHE_DRIVER=file es local al pod. En OpenShift usa redis/memcached
+    (o database) compartido entre replicas.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.env.*"
+          pattern: "(?i)^\\s*CACHE_DRIVER\\s*=\\s*file\\s*$"
+      - builtin.filecontent:
+          filePattern: ".*/config/cache\\.php$"
+          pattern: "(?i)'default'\\s*=>\\s*env\\(\\s*['\"]CACHE_DRIVER['\"]\\s*,\\s*['\"]file['\"]"
+
+- ruleID: laravel-ocp-queue-00001
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=queue
+  description: QUEUE_CONNECTION=sync (sin workers)
+  message: |
+    sync ejecuta jobs en el request HTTP: fragil bajo carga.
+    Remediacion OCP: Deployment de queue worker (`php artisan queue:work`)
+    + Redis/DB queue + liveness del worker.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.env.*"
+      pattern: "(?i)^\\s*QUEUE_CONNECTION\\s*=\\s*sync\\s*$"

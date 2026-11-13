@@ -1,0 +1,87 @@
+- ruleID: dotnet-ocp-rt-00001
+  category: mandatory
+  effort: 4
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: Process.Start / shell desde la aplicacion
+  message: |
+    Process.Start/cmd.exe/bash desde el proceso web choca con SCC (no-root), imagenes
+    Chiseled (sin shell) y con el modelo de un proceso por contenedor.
+    Remediacion: Jobs/CronJobs de OpenShift, Worker Service dedicado, o cola (Rabbit/Kafka).
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "(?i)\\b(Process\\.Start\\s*\\(|cmd\\.exe|/bin/(ba)?sh|powershell\\.exe|UseShellExecute\\s*=\\s*true)\\b"
+
+- ruleID: dotnet-ocp-rt-00002
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: HttpContext.Current (afinidad a hilo / System.Web)
+  message: |
+    HttpContext.Current no es el modelo ASP.NET Core y falla bajo async en contenedores.
+    Remediacion: IHttpContextAccessor inyectado; eliminar System.Web.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\bHttpContext\\.Current\\b"
+
+- ruleID: dotnet-ocp-rt-00003
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: Environment.Exit / FailFast sin apagado elegante
+  message: |
+    Exit/FailFast evita el graceful shutdown ante SIGTERM (drain de Kestrel/host).
+    Remediacion: IHostApplicationLifetime.StopApplication(), respetar CancellationToken
+    en HostedService/BackgroundService y timeout de terminationGracePeriodSeconds.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(Environment\\.Exit\\s*\\(|Environment\\.FailFast\\s*\\(|Process\\.GetCurrentProcess\\(\\)\\.Kill\\s*\\()\\b"
+
+- ruleID: dotnet-ocp-rt-00004
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: Directory.GetCurrentDirectory como content root persistente
+  message: |
+    GetCurrentDirectory() no es fiable como raiz de contenido en contenedores (WORKDIR/entrypoints).
+    Remediacion: IHostEnvironment.ContentRootPath / AppContext.BaseDirectory.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\bDirectory\\.GetCurrentDirectory\\s*\\("
+
+- ruleID: dotnet-ocp-rt-00005
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: BackgroundService / IHostedService sin CancellationToken evidente
+  message: |
+    Workers deben respetar stoppingToken para SIGTERM en OpenShift.
+    Verifica ExecuteAsync(stoppingToken) y operaciones cancelables; evita Task.Delay sin token.
+    (Heuristica: presencia de hosted service — revisar manualmente el apagado elegante.)
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(BackgroundService|IHostedService|AddHostedService\\s*<)"

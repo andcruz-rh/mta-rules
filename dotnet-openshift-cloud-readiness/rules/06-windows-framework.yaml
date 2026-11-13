@@ -1,0 +1,100 @@
+- ruleID: dotnet-ocp-win-00001
+  category: mandatory
+  effort: 7
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=windows
+  description: TargetFramework .NET Framework 4.x (Windows containers)
+  message: |
+    net4x/net48 requiere imagenes Windows (mcr.microsoft.com/dotnet/framework/aspnet).
+    En OpenShift Linux esto bloquea el despliegue. Remediacion preferida: portar a
+    .NET 10 LTS (net10.0) o .NET 8 LTS (net8.0) sobre contenedores Linux.
+    Si debe permanecer Framework, planifica nodos Windows y acepta superficie/ops mayores.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(csproj|vbproj|fsproj)$"
+          pattern: "(?i)<TargetFramework(s)?\\s*>\\s*([^<]*\\b)?net4[0-9]{1,2}\\b"
+      - builtin.filecontent:
+          filePattern: ".*/packages\\.config$"
+          pattern: "(?i)targetFramework=\"net4"
+      - builtin.filecontent:
+          filePattern: ".*/App\\.config$"
+          pattern: "(?i)sku=\"\\.NETFramework,Version=v4"
+
+- ruleID: dotnet-ocp-win-00002
+  category: mandatory
+  effort: 5
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=windows
+  description: APIs solo-Windows (Registry, WMI, EventLog admin, Named Pipes locales)
+  message: |
+    Registry / ManagementObjectSearcher (WMI) / APIs Win32 no existen en contenedores Linux.
+    Remediacion: reimplementar con config/env, APIs cross-platform, o sidecar/Jobs con contrato claro.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb|csproj)$"
+      pattern: "(?i)\\b(Microsoft\\.Win32\\.Registry|RegistryKey|System\\.Management\\.ManagementObject|ManagementObjectSearcher|NamedPipe(Client|Server)Stream)\\b"
+
+- ruleID: dotnet-ocp-win-00003
+  category: mandatory
+  effort: 4
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=windows
+  description: System.Drawing.Common / GDI+ incompatible con contenedores Linux tipicos
+  message: |
+    System.Drawing.Common esta deprecado fuera de Windows; falla en imagenes chiseled/alpine.
+    Remediacion: ImageSharp / SkiaSharp / Magick.NET con libs nativas en la imagen,
+    o servicio de render externo. Evita instalar toolchains pesados solo para GDI+.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb)$"
+          pattern: "\\b(System\\.Drawing|Bitmap|Graphics\\.FromImage)\\b"
+      - builtin.filecontent:
+          filePattern: ".*\\.(csproj|vbproj|fsproj)$"
+          pattern: "(?i)Include\\s*=\\s*\"System\\.Drawing(\\.Common)?\""
+
+- ruleID: dotnet-ocp-win-00004
+  category: mandatory
+  effort: 5
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=windows
+  description: P/Invoke o COM Interop a binarios Windows
+  message: |
+    DllImport de DLLs Windows / COM Interop no porta a Linux containers.
+    Remediacion: libreria managed cross-platform, native .so empaquetada, o extraer la
+    dependencia a un servicio dedicado.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "(?i)\\[\\s*(DllImport\\s*\\(\\s*\"(?!libc)[^\"]+\"|ComImport)\\b|Type\\.GetTypeFromProgID"
+
+- ruleID: dotnet-ocp-win-00005
+  category: potential
+  effort: 4
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=security
+  description: Windows Authentication (Negotiate/NTLM) sin alternativa cloud
+  message: |
+    Negotiate/NTLM/Kerberos acoplado a dominio AD no mapea 1:1 a pods Linux.
+    Remediacion: OIDC (Keycloak/RH-SSO), certificados mTLS, o documentar path Kerberos
+    constrained delegation si el negocio lo exige.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb|json|config)$"
+      pattern: "(?i)(AddNegotiate\\s*\\(|\\bNegotiate\\b|\\bNTLM\\b|UseWindowsAuthentication|WindowsAuthentication|Microsoft\\.AspNetCore\\.Authentication\\.Negotiate)"

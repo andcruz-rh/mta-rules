@@ -1,0 +1,55 @@
+- ruleID: dotnet-ocp-log-00001
+  category: mandatory
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=logging
+  description: Logging a archivo local (Serilog/NLog/log4net/MEL)
+  message: |
+    Logs en disco del contenedor se pierden con el pod y complican SCC/FS.
+    Remediacion Twelve-Factor: Console / stderr (Serilog WriteTo.Console, NLog console target,
+    logging JSON a stdout) + recolector del cluster (Vector/Fluent Bit/OpenShift Logging).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb|json|config|xml|nlog)$"
+          pattern: "(?i)(WriteTo\\.File\\s*\\(|RollingFileAppender|FileTarget|fileName\\s*=\\s*[\"'][^\"']+\\.log|AddFile\\s*\\(|\"File\"\\s*:\\s*\\{)"
+      - builtin.filecontent:
+          filePattern: ".*/appsettings.*\\.json$"
+          pattern: "(?i)\"Path\"\\s*:\\s*\"[^\"]*\\.(log|txt)\""
+
+- ruleID: dotnet-ocp-log-00002
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=logging
+  description: Windows Event Log como destino de logs
+  message: |
+    EventLogWriter / WriteTo.EventLog no existen (o no aplican) en contenedores Linux.
+    Remediacion: logging a stdout/stderr estructurado.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb|json|config|xml)$"
+      pattern: "(?i)\\b(EventLog|WriteTo\\.EventLog|EventLogTarget|System\\.Diagnostics\\.EventLog)\\b"
+
+- ruleID: dotnet-ocp-log-00003
+  category: potential
+  effort: 1
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=logging
+  description: Debug/Trace listeners a archivo
+  message: |
+    Trace/Debug TextWriterTraceListener a archivo no es cloud-native.
+    Prefiere ILogger + providers consolidados a stdout.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb|config)$"
+      pattern: "(?i)\\b(TextWriterTraceListener|XmlWriterTraceListener|DelimitedListTraceListener)\\b"

@@ -1,0 +1,71 @@
+- ruleID: dotnet-ocp-sess-00001
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=sessions
+  description: Session in-memory sin store distribuido
+  message: |
+    AddSession sin IDistributedCache compartido rompe sticky-less multi-replica.
+    Remediacion: AddStackExchangeRedisCache (o SQL) + Session; o 1 replica temporal (no target).
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(AddSession|UseSession)\\s*\\("
+
+- ruleID: dotnet-ocp-cache-00001
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=cache
+  description: Distributed cache solo en memoria del proceso
+  message: |
+    AddDistributedMemoryCache es local al pod: no sirve como cache/session compartida.
+    Remediacion: Redis (AddStackExchangeRedisCache) o equivalente externo.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\bAddDistributedMemoryCache\\s*\\("
+
+- ruleID: dotnet-ocp-cache-00002
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=cache
+  description: IMemoryCache / AddMemoryCache como estado compartido
+  message: |
+    IMemoryCache no se replica entre instancias. Valido como cache L1; estado compartido
+    o feature flags deben ir a Redis/DB externo.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\bAddMemoryCache\\s*\\(|\\bIMemoryCache\\b"
+
+- ruleID: dotnet-ocp-data-00001
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=data
+  description: EF Core / SQLite o LocalDB como store de produccion
+  message: |
+    UseSqlite / LocalDB / AttachDbFilename son stores locales al nodo/pod.
+    Remediacion: PostgreSQL/SQL Server/MySQL como Service de cluster + connection string via Secret.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb)$"
+          pattern: "\\b(UseSqlite|UseInMemoryDatabase)\\s*\\("
+      - builtin.filecontent:
+          filePattern: ".*/(appsettings.*\\.json|.*\\.config)$"
+          pattern: "(?i)(Data Source\\s*=\\s*\\(.*LocalDB|AttachDbFilename|Data Source\\s*=\\s*[^;]*\\.db|Filename\\s*=\\s*[^;]*\\.db)"

@@ -1,0 +1,38 @@
+- ruleID: laravel-ocp-fs-00001
+  category: mandatory
+  effort: 4
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: FILESYSTEM_DISK=local como disco por defecto
+  message: |
+    Disco local de Laravel (`storage/app`) es efimero en el pod.
+    Remediacion: S3-compatible (ODF/NooBaa/AWS) como default para uploads;
+    PVC solo si realmente necesitas FS compartido (RWX) y conoces el trade-off.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.env.*"
+          pattern: "(?i)^\\s*FILESYSTEM_DISK\\s*=\\s*local\\s*$"
+      - builtin.filecontent:
+          filePattern: ".*/config/filesystems\\.php$"
+          pattern: "(?i)'default'\\s*=>\\s*env\\(\\s*['\"]FILESYSTEM_DISK['\"]\\s*,\\s*['\"]local['\"]"
+
+- ruleID: laravel-ocp-fs-00002
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Escritura explicita a storage_path / public_path
+  message: |
+    Escritura bajo storage_path/public_path acopla datos al contenedor.
+    Revisa si debe ir a object storage o PVC montado en path dedicado.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.php$"
+      pattern: "(?i)(Storage::(put|putFile|download)|file_put_contents\\s*\\(\\s*storage_path|move_uploaded_file\\s*\\(.*public_path|fopen\\s*\\(\\s*storage_path)"

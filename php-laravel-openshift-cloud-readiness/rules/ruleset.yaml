@@ -1,0 +1,9 @@
+name: php-laravel-openshift-cloud-readiness
+description: >
+  Laravel anti-patterns for OpenShift/containers:
+  file sessions/cache, local disk, hardcoded env, localhost DB, shell exec.
+labels:
+  - konveyor.io/source=php
+  - konveyor.io/source=laravel
+  - konveyor.io/target=cloud-readiness
+  - konveyor.io/target=openshift

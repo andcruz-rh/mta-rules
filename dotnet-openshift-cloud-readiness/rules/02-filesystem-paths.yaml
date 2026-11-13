@@ -1,0 +1,73 @@
+- ruleID: dotnet-ocp-fs-00001
+  category: mandatory
+  effort: 4
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Rutas absolutas Windows (C:\ / D:\) en codigo o config
+  message: |
+    Rutas Windows absolutas no existen en contenedores Linux (imagen preferida .NET 8/10 LTS).
+    Remediacion: IHostEnvironment.ContentRootPath / WebRootPath, paths relativos,
+    o object storage / PVC montado en path POSIX conocido.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb|json|config|xml)$"
+          pattern: "(?i)([\"'][A-Za-z]:\\\\|/cygdrive/[a-z]/|@\"[A-Za-z]:\\\\)"
+      - builtin.filecontent:
+          filePattern: ".*\\.(cs|fs|vb)$"
+          pattern: "(?i)Path\\.Combine\\s*\\(\\s*\"[A-Za-z]:"
+
+- ruleID: dotnet-ocp-fs-00002
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Escritura a disco local sin volume/object storage
+  message: |
+    File.Write*/FileStream/Directory.CreateDirectory sobre paths locales son efimeros en el pod.
+    Remediacion: S3-compatible (ODF/NooBaa/MinIO/AWS), PVC RWX solo si hay requisito FS real,
+    o emptyDir solo para scratch efimero.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(File\\.(WriteAllText|WriteAllBytes|WriteAllLines|AppendAllText|Copy|Move|Create|OpenWrite)|new\\s+FileStream\\s*\\(|Directory\\.(CreateDirectory|Move))\\b"
+
+- ruleID: dotnet-ocp-fs-00003
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Server.MapPath / HostingEnvironment.MapPath (System.Web)
+  message: |
+    MapPath es acoplamiento IIS/System.Web incompatible con Kestrel en contenedor Linux.
+    Remediacion: IWebHostEnvironment / IHostEnvironment para resolver paths.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(Server\\.MapPath|HostingEnvironment\\.MapPath|HttpContext\\.Current\\.Server\\.MapPath)\\b"
+
+- ruleID: dotnet-ocp-fs-00004
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Persistencia via SpecialFolder / GetTempPath como almacenamiento
+  message: |
+    SpecialFolder y TempPath no son almacenamiento durable entre pods/replicas.
+    Usa object storage o volumen montado con path explicito de configuracion.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(cs|fs|vb)$"
+      pattern: "\\b(Environment\\.(GetFolderPath|GetEnvironmentVariable\\s*\\(\\s*\"TEMP\")|Path\\.GetTempPath|Path\\.GetTempFileName)\\b"

@@ -1,0 +1,37 @@
+- ruleID: laravel-ocp-log-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=logging
+  description: Logging principalmente a archivos locales
+  message: |
+    Logs solo en storage/logs se pierden con el pod.
+    Remediacion: LOG_CHANNEL=stderr (o stack con stderr) + recolector del cluster.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*\\.env.*"
+          pattern: "(?i)^\\s*LOG_CHANNEL\\s*=\\s*(single|daily)\\s*$"
+      - builtin.filecontent:
+          filePattern: ".*/config/logging\\.php$"
+          pattern: "(?i)'default'\\s*=>\\s*env\\(\\s*['\"]LOG_CHANNEL['\"]\\s*,\\s*['\"](single|daily)['\"]"
+
+- ruleID: laravel-ocp-sched-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=laravel
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=scheduler
+  description: Scheduler Laravel sin CronJob explicito
+  message: |
+    schedule() requiere un unico scheduler (`php artisan schedule:run` / `schedule:work`).
+    En OpenShift usa CronJob o un Deployment de 1 replica dedicado — no lo asumas en el pod web.
+  when:
+    builtin.filecontent:
+      filePattern: ".*/(app/Console/Kernel\\.php|routes/console\\.php)$"
+      pattern: "(?i)->(daily|hourly|everyMinute|cron)\\s*\\("

@@ -1,0 +1,31 @@
+# Versionar: README general, y por ruleset → rules/, bin/, README.md, INSTALL.md.
+# Fuera: tarballs, fixtures, metadata Eclipse/MTA, VERSION local, etc.
+
+# Ignorar el contenido del repo por defecto
+/*
+
+# Mantener metadatos del repo
+!.gitignore
+!README.md
+
+# Permitir directorios raíz de cada ruleset
+!dotnet-openshift-cloud-readiness/
+!php-laravel-openshift-cloud-readiness/
+
+# --- dotnet-openshift-cloud-readiness ---
+dotnet-openshift-cloud-readiness/*
+!dotnet-openshift-cloud-readiness/rules/
+!dotnet-openshift-cloud-readiness/rules/**
+!dotnet-openshift-cloud-readiness/bin/
+!dotnet-openshift-cloud-readiness/bin/**
+!dotnet-openshift-cloud-readiness/README.md
+!dotnet-openshift-cloud-readiness/INSTALL.md
+
+# --- php-laravel-openshift-cloud-readiness ---
+php-laravel-openshift-cloud-readiness/*
+!php-laravel-openshift-cloud-readiness/rules/
+!php-laravel-openshift-cloud-readiness/rules/**
+!php-laravel-openshift-cloud-readiness/bin/
+!php-laravel-openshift-cloud-readiness/bin/**
+!php-laravel-openshift-cloud-readiness/README.md
+!php-laravel-openshift-cloud-readiness/INSTALL.md

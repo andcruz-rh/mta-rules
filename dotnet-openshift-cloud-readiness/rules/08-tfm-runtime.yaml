@@ -1,0 +1,62 @@
+- ruleID: dotnet-ocp-tfm-00001
+  category: mandatory
+  effort: 5
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/source=dotnetcore
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=tfm
+  description: TargetFramework fuera de soporte para nuevos contenedores Linux
+  message: |
+    TFM netcoreapp2.x/3.x, net5.0, net6.0 o net7.0 no es baseline recomendada para
+    contenedores nuevos en OpenShift (EOL / sin imagenes LTS actuales alineadas).
+    Remediacion: portar a net10.0 (LTS preferido) o net8.0 si el ecosistema aun lo exige.
+    Usa imagenes mcr.microsoft.com/dotnet/aspnet:10.0 (o 8.0) Chiseled/Alpine/slim,
+    USER no-root y ASPNETCORE_HTTP_PORTS=8080.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(csproj|vbproj|fsproj)$"
+      pattern: "(?i)<TargetFramework(s)?\\s*>\\s*([^<]*\\b)?(netcoreapp[23](\\.[0-9]+)?|net5\\.0|net6\\.0|net7\\.0)\\b"
+
+- ruleID: dotnet-ocp-tfm-00002
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/source=dotnetcore
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=tfm
+  description: TargetFramework STS (net9.0) en lugar de LTS para produccion
+  message: |
+    net9.0 es STS (soporte corto). Para contenedores de produccion en OpenShift
+    prioriza net10.0 LTS (o net8.0 LTS si aun esta en ventana de soporte extendido).
+    Evalua upgrade de SDK/imagen base a 10.0 antes del go-live.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(csproj|vbproj|fsproj)$"
+      pattern: "(?i)<TargetFramework(s)?\\s*>\\s*([^<]*\\b)?net9\\.0\\b"
+
+- ruleID: dotnet-ocp-tfm-00003
+  category: potential
+  effort: 1
+  labels:
+    - konveyor.io/source=dotnet
+    - konveyor.io/source=dotnetcore
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=tfm
+  description: Proyecto net8.0 — validar ruta a .NET 10 LTS para nueva baseline de contenedor
+  message: |
+    net8.0 sigue siendo LTS valido, pero la baseline actual de contenedorizacion
+    recomendada por este ruleset es net10.0 (+ imagenes *:10.0).
+    Si inicias el Dockerfile ahora, planifica SDK/runtime 10.0 para maximizar ventana de soporte.
+    No bloquea el despliegue en 8.0 si el soporte aun aplica a tu calendario.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(csproj|vbproj|fsproj)$"
+      pattern: "(?i)<TargetFramework(s)?\\s*>\\s*([^<]*\\b)?net8\\.0\\b"

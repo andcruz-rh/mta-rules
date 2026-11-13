@@ -1,0 +1,13 @@
+name: dotnet-openshift-cloud-readiness
+description: >
+  .NET Framework / .NET Core / .NET 5–10 anti-patterns that block containerization
+  and OpenShift readiness: outdated TFMs, hardcoded secrets, local filesystem,
+  in-memory state, file logging, Windows-only APIs, IIS coupling, localhost
+  networking, and non-graceful process patterns. Preferred container baseline: net10.0.
+labels:
+  - konveyor.io/source=dotnet
+  - konveyor.io/source=dotnetcore
+  - konveyor.io/source=dotnet10
+  - konveyor.io/target=cloud-readiness
+  - konveyor.io/target=openshift
+  - konveyor.io/target=containers
