@@ -14,6 +14,7 @@ Repositorio de **rulesets custom** para [Red Hat Migration Toolkit for Applicati
 |---------|-------|---------|------------|
 | [`dotnet-openshift-cloud-readiness/`](dotnet-openshift-cloud-readiness/) | .NET Framework / .NET Core / **.NET 5–10** | 1.1.0 | Secretos, FS local, session/cache in-memory, logs a archivo, IIS/Windows APIs, `localhost`, TFMs EOL vs **net10.0** LTS |
 | [`php-laravel-openshift-cloud-readiness/`](php-laravel-openshift-cloud-readiness/) | PHP / Laravel | 1.0.0 | Sessions/cache/queue en file/sync, disco local, `.env`/secretos, DB localhost, logging a archivo, scheduler, `exec()` |
+| [`angular-openshift-cloud-readiness/`](angular-openshift-cloud-readiness/) | Angular (SPA / **SSR**) | 1.1.0 | Secretos en `environment*.ts`, `localhost`/`baseUrl` en services, config solo compile-time, SSR FS/puerto/shell, `window` sin guardas, SW, Angular EOL vs **19+** |
 
 Cada paquete contiene:
 
@@ -40,8 +41,13 @@ Los directorios `fixture/` y los tarballs `*.tar.gz` **no** se versionan (solo c
   --input /ruta/a/tu-app-laravel \
   --output /tmp/mta-laravel-out
 
+# Angular (SPA/SSR)
+./angular-openshift-cloud-readiness/bin/analyze-angular.sh \
+  --input /ruta/a/tu-app-angular \
+  --output /tmp/mta-angular-out
+
 # Inspeccionar violaciones
-rg 'dotnet-ocp-|laravel-ocp-' /tmp/mta-*-out/output.yaml
+rg 'dotnet-ocp-|laravel-ocp-|angular-ocp-' /tmp/mta-*-out/output.yaml
 ```
 
 Detalle de flags (`--provider java`, label-selector, etc.): ver el `INSTALL.md` de cada paquete.

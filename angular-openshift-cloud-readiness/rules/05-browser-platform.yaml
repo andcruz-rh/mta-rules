@@ -1,0 +1,61 @@
+- ruleID: angular-ocp-dom-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=ssr
+  description: Acceso directo a window/document (rompe SSR en contenedor Node)
+  message: |
+    window/document/navigator no existen en el proceso Node de @angular/ssr.
+    Si el proyecto usa SSR, guarda con isPlatformBrowser(PLATFORM_ID) o
+    afterNextRender / inject(DestroyRef) patterns. En SPA pura es ruido —
+    triagelo segun angular.json / @angular/ssr en package.json.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(ts|js)$"
+      pattern: "(^|[^.$\\w])(window|document|navigator)\\.(location|localStorage|sessionStorage|cookie|userAgent)\\b"
+
+- ruleID: angular-ocp-state-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=state
+  description: Tokens de auth en localStorage/sessionStorage
+  message: |
+    Guardar access/refresh tokens en localStorage expone XSS y no es el
+    patron preferido con IdP (Keycloak/RH-SSO) + cookies HttpOnly Secure
+    SameSite detras de Route TLS. Revisa el flujo OIDC/BFF si vas a
+    multi-entorno OpenShift.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(ts|js)$"
+      pattern: "(?i)(localStorage|sessionStorage)\\.(setItem|getItem)\\s*\\(\\s*['\"][^'\"]*(token|access|refresh|jwt|id_token|auth)"
+
+- ruleID: angular-ocp-sw-00001
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=caching
+  description: Service Worker / ngsw que puede cachear index.html agresivamente
+  message: |
+    @angular/service-worker (ngsw) puede retener index.html viejo y atrapar
+    clientes en una revision tras un rollout. Asegura estrategia que no
+    cachee index.html de forma immutable, versiona el manifest, y valida
+    el rollout (hash de chunks + Cache-Control no-cache en index.html
+    servido por nginx).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*/(package\\.json|angular\\.json)$"
+          pattern: "(?i)(@angular/service-worker|\"serviceWorker\"\\s*:\\s*true|ngsw-config)"
+      - builtin.filecontent:
+          filePattern: ".*/ngsw-config\\.json$"
+          pattern: "(?i)\"index\""

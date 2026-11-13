@@ -11,6 +11,7 @@
 # Permitir directorios raíz de cada ruleset
 !dotnet-openshift-cloud-readiness/
 !php-laravel-openshift-cloud-readiness/
+!angular-openshift-cloud-readiness/
 
 # --- dotnet-openshift-cloud-readiness ---
 dotnet-openshift-cloud-readiness/*
@@ -20,6 +21,7 @@ dotnet-openshift-cloud-readiness/*
 !dotnet-openshift-cloud-readiness/bin/**
 !dotnet-openshift-cloud-readiness/README.md
 !dotnet-openshift-cloud-readiness/INSTALL.md
+!dotnet-openshift-cloud-readiness/.cursorrules
 
 # --- php-laravel-openshift-cloud-readiness ---
 php-laravel-openshift-cloud-readiness/*
@@ -29,3 +31,14 @@ php-laravel-openshift-cloud-readiness/*
 !php-laravel-openshift-cloud-readiness/bin/**
 !php-laravel-openshift-cloud-readiness/README.md
 !php-laravel-openshift-cloud-readiness/INSTALL.md
+!php-laravel-openshift-cloud-readiness/.cursorrules
+
+# --- angular-openshift-cloud-readiness ---
+angular-openshift-cloud-readiness/*
+!angular-openshift-cloud-readiness/rules/
+!angular-openshift-cloud-readiness/rules/**
+!angular-openshift-cloud-readiness/bin/
+!angular-openshift-cloud-readiness/bin/**
+!angular-openshift-cloud-readiness/README.md
+!angular-openshift-cloud-readiness/INSTALL.md
+!angular-openshift-cloud-readiness/.cursorrules

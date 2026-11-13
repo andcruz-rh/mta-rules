@@ -1,0 +1,83 @@
+- ruleID: angular-ocp-ver-00001
+  category: mandatory
+  effort: 5
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=version
+  description: Angular fuera de soporte (v16 o inferior)
+  message: |
+    @angular/core <=16 esta fuera de soporte activo: sin parches de seguridad
+    alineados para una baseline de contenedor nueva en OpenShift.
+    Remediacion: upgrade a Angular 19+ (preferible 20/21 segun calendario LTS
+    vigente) antes de congelar la imagen CI. SPA → nginx-unprivileged;
+    SSR → node LTS alpine no-root.
+  when:
+    builtin.filecontent:
+      filePattern: ".*/package\\.json$"
+      pattern: "\"@angular/core\"\\s*:\\s*\"[~^]?((?:1[0-6])|[0-9])\\."
+
+- ruleID: angular-ocp-ver-00002
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=version
+  description: Angular 17–18 — planificar upgrade a baseline actual
+  message: |
+    Angular 17/18 pueden estar fuera o al final de ventana de soporte segun
+    la fecha del analisis. Para contenedores nuevos prioriza la major LTS/
+    activa actual (19+) y el application builder (`browser` output en
+    dist/<app>/browser). Valida SSR (@angular/ssr) y Node LTS alineados.
+  when:
+    builtin.filecontent:
+      filePattern: ".*/package\\.json$"
+      pattern: "\"@angular/core\"\\s*:\\s*\"[~^]?1[78]\\."
+
+- ruleID: angular-ocp-ver-00003
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=version
+  description: engines.node antiguo o incompatible con imagen LTS
+  message: |
+    Campo engines.node restrictivo (<18 o 14/16) choca con imagenes
+    node:<lts>-alpine actuales usadas en multi-stage builds.
+    Remediacion: alinear engines a Node 20/22 LTS y la misma major en
+    Dockerfile (build + runtime SSR).
+  when:
+    builtin.filecontent:
+      filePattern: ".*/package\\.json$"
+      pattern: "\"node\"\\s*:\\s*\"[^\"]*(?:<\\s*18|<=\\s*16|\\^?14|\\^?16)[^\"]*\""
+
+- ruleID: angular-ocp-build-00001
+  category: potential
+  effort: 1
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=build
+  description: outputPath legacy sin carpeta browser (Angular <17 application builder)
+  message: |
+    Con el builder `application` (Angular 17+) los estaticos quedan en
+    dist/<project>/browser — el stage nginx debe copiar esa ruta, no
+    dist/<project> a secas. Verifica angular.json → outputPath / outputs
+    antes de escribir el Dockerfile SPA.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*/angular\\.json$"
+          pattern: "\"builder\"\\s*:\\s*\"@angular-devkit/build-angular:browser\""
+      - builtin.filecontent:
+          filePattern: ".*/angular\\.json$"
+          pattern: "\"outputPath\"\\s*:\\s*\"dist/[^\"]+\""

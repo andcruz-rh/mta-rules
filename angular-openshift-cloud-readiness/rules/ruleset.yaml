@@ -1,0 +1,15 @@
+name: angular-openshift-cloud-readiness
+description: >
+  Angular (SPA / SSR) anti-patterns that block containerization and OpenShift
+  readiness: secrets and API URLs baked at compile time, localhost backends,
+  missing runtime config (Build Once Deploy Anywhere), SSR filesystem/port/shell
+  coupling, browser globals without platform guards, and EOL Angular toolchains.
+  Preferred container baselines: SPA → nginx-unprivileged:8080; SSR → node alpine
+  non-root on 8080 with runtime config injection.
+labels:
+  - konveyor.io/source=angular
+  - konveyor.io/source=typescript
+  - konveyor.io/source=javascript
+  - konveyor.io/target=cloud-readiness
+  - konveyor.io/target=openshift
+  - konveyor.io/target=containers

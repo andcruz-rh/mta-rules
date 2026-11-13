@@ -1,0 +1,97 @@
+- ruleID: angular-ocp-ssr-00001
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=filesystem
+  description: Escritura a filesystem local en server SSR
+  message: |
+    writeFile / createWriteStream / mkdirSync en server.ts (o Express) usa el
+    disco efimero del pod. Remediacion: object storage, PVC explicito, o cache
+    externa (Redis). No uses el FS del contenedor como store de negocio.
+  when:
+    builtin.filecontent:
+      filePattern: ".*(server|main\\.server)\\.(ts|js|mjs)$"
+      pattern: "(?i)\\b(writeFile(Sync)?|appendFile(Sync)?|createWriteStream|mkdirSync|rmSync|unlinkSync)\\s*\\("
+
+- ruleID: angular-ocp-ssr-00002
+  category: mandatory
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: SSR escuchando en puerto privilegiado 80/443
+  message: |
+    Contenedores no-root en OpenShift no pueden bind a 80/443.
+    Remediacion: listen(process.env.PORT || 8080); Service/Route delante.
+    Imagen tipica: node:<lts>-alpine como USER node.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*(server|main\\.server)\\.(ts|js|mjs)$"
+          pattern: "(?i)\\.(listen)\\s*\\(\\s*(80|443)\\b"
+      - builtin.filecontent:
+          filePattern: ".*(server|main\\.server)\\.(ts|js|mjs)$"
+          pattern: "(?i)(PORT|port)\\s*[=:]\\s*(80|443)\\b"
+
+- ruleID: angular-ocp-ssr-00003
+  category: potential
+  effort: 4
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: child_process / shell desde el proceso SSR
+  message: |
+    exec/spawn/fork desde el server Angular SSR choca con SCC no-root e
+    imagenes minimas sin shell. Remediacion: Jobs/CronJobs de OpenShift,
+    microservicio dedicado o cola — no shells desde el pod web.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(ts|js|mjs)$"
+      pattern: "(?i)(from\\s+['\"]child_process['\"]|require\\s*\\(\\s*['\"]child_process['\"]\\s*\\)|child_process\\.(exec|spawn|fork|execFile)|\\b(execSync|execFileSync|spawnSync)\\s*\\()"
+
+- ruleID: angular-ocp-ssr-00004
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=runtime
+  description: process.exit en server SSR (sin graceful shutdown)
+  message: |
+    process.exit evita el apagado elegante ante SIGTERM (drain de Express/
+    Angular Node). Remediacion: cerrar el server HTTP, respetar
+    terminationGracePeriodSeconds y handlers de signal.
+  when:
+    builtin.filecontent:
+      filePattern: ".*(server|main\\.server)\\.(ts|js|mjs)$"
+      pattern: "\\bprocess\\.exit\\s*\\("
+
+- ruleID: angular-ocp-ssr-00005
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=logging
+  description: Logging SSR a archivo local
+  message: |
+    Transports a archivo (winston/pino-file / createWriteStream logs) se
+    pierden con el pod. Remediacion: log a stdout/stderr JSON + recolector
+    del cluster (ClusterLogForwarder / OTEL).
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*(server|main\\.server|logger)\\.(ts|js|mjs)$"
+          pattern: "(?i)(winston\\.transports\\.File|createWriteStream\\s*\\([^)]*log|pino\\.destination\\s*\\(|filename\\s*:\\s*['\"][^'\"]*\\.log)"
+      - builtin.filecontent:
+          filePattern: ".*\\.(ts|js|mjs)$"
+          pattern: "(?i)new\\s+winston\\.transports\\.File\\s*\\("

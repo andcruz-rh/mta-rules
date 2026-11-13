@@ -1,0 +1,63 @@
+- ruleID: angular-ocp-cfg-00002
+  category: potential
+  effort: 3
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=config
+  description: fileReplacements de environment*.ts (config solo en compile-time)
+  message: |
+    fileReplacements hacia environment.prod.ts implica una imagen distinta por
+    entorno (rebuild). Para OpenShift Twelve-Factor prioriza config runtime:
+    assets/config.json + provideAppInitializer, o docker-entrypoint + envsubst
+    sobre un placeholder. Mantén una sola imagen promovida CI → staging → prod.
+  when:
+    or:
+      # builtin.filecontent evalúa por línea: no usar [\s\S]* multilínea
+      - builtin.filecontent:
+          filePattern: ".*/angular\\.json$"
+          pattern: "(?i)\"fileReplacements\"\\s*:"
+      - builtin.filecontent:
+          filePattern: ".*/angular\\.json$"
+          pattern: "(?i)environments/environment\\.(prod|production)\\.ts"
+
+- ruleID: angular-ocp-cfg-00003
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=config
+  description: production=true / enableProdMode acoplado a environment estático
+  message: |
+    production: true en environment*.ts es normal, pero si además concentra
+    URLs/feature flags exclusivos de un cluster, bloquea promover la misma
+    imagen. Separa flags de build (optimization, sourceMap) de config de
+    despliegue (API host, IdP, feature toggles) vía runtime config.
+  when:
+    builtin.filecontent:
+      filePattern: ".*/environments/environment(\\.prod)?\\.ts$"
+      pattern: "(?i)production\\s*[:=]\\s*true"
+
+- ruleID: angular-ocp-cfg-00004
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=config
+  description: Uso de process.env en bundle cliente sin inyeccion runtime
+  message: |
+    process.env.* en codigo de browser solo se sustituye en build (DefinePlugin /
+    fileReplacements / custom webpack). No lee variables del Deployment en
+    runtime. Remediacion SPA: config.json montado/sustituido al start del
+    contenedor; SSR Node: si, puede leer process.env en server.mjs — limitalo
+    al lado servidor.
+  when:
+    builtin.filecontent:
+      filePattern: ".*\\.(ts|js|mjs)$"
+      pattern: "\\bprocess\\.env\\.[A-Z0-9_]+"

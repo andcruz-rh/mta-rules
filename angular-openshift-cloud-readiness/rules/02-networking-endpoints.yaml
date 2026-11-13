@@ -1,0 +1,91 @@
+- ruleID: angular-ocp-net-00001
+  category: mandatory
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: URL de API/backend apuntando a localhost
+  message: |
+    localhost/127.0.0.1 embebido en el frontend no resuelve Services del cluster
+    (ni desde el navegador del usuario final, ni desde el proceso SSR en el pod).
+    Remediacion: URL relativa + Ingress/Route, o config runtime
+    (assets/config.json / env) con el DNS publico o del Service segun el caso.
+  when:
+    or:
+      - builtin.filecontent:
+          filePattern: ".*/environments/environment.*\\.ts$"
+          pattern: "(?i)(https?://(localhost|127\\.0\\.0\\.1)|['\"]/(api)?['\"].*(localhost|127\\.0\\.0\\.1)|(apiUrl|baseUrl|backendUrl|serverUrl)\\s*[:=]\\s*['\"][^'\"]*(localhost|127\\.0\\.0\\.1))"
+      - builtin.filecontent:
+          filePattern: ".*\\.(ts|js|mjs)$"
+          pattern: "(?i)https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?"
+
+- ruleID: angular-ocp-net-00002
+  category: potential
+  effort: 1
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: proxy.conf con backend en localhost (solo valido en ng serve)
+  message: |
+    proxy.conf*.json hacia localhost sirve para `ng serve` local; no existe en
+    la imagen nginx/SSR de produccion. En OpenShift el enrutado lo hace
+    Route/Ingress o un Service mesh — documenta la URL runtime y no dependas
+    del proxy de desarrollo en el contenedor.
+  when:
+    builtin.filecontent:
+      filePattern: ".*/proxy\\.conf(\\.[^/]+)?\\.(json|js)$"
+      pattern: "(?i)(localhost|127\\.0\\.0\\.1|target\\s*[:=]\\s*['\"]https?://)"
+
+- ruleID: angular-ocp-net-00003
+  category: potential
+  effort: 2
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - category=networking
+  description: URL absoluta de API hardcodeada en environment*.ts
+  message: |
+    apiUrl/baseUrl con https://host fijo se bakea en el bundle: rompe
+    Build Once Deploy Anywhere (misma imagen en dev/staging/prod).
+    Remediacion: path relativo (`/api`) detras de Ingress, o config.json
+    inyectado al arrancar el contenedor (envsubst / ConfigMap montado).
+  when:
+    builtin.filecontent:
+      filePattern: ".*/environments/environment.*\\.ts$"
+      pattern: "(?i)(apiUrl|baseUrl|backendUrl|serverUrl|apiBaseUrl)\\s*[:=]\\s*['\"]https?://[^'\"]+['\"]"
+
+- ruleID: angular-ocp-net-00004
+  category: mandatory
+  effort: 3
+  labels:
+    - konveyor.io/source=angular
+    - konveyor.io/target=cloud-readiness
+    - konveyor.io/target=openshift
+    - konveyor.io/target=containers
+    - category=networking
+  description: baseUrl/API absoluto hardcodeado en servicios o componentes
+  message: |
+    Constantes tipo `const baseUrl = 'http://…'` en services/components se
+    compilan en el bundle: no hay forma de apuntar a otro backend sin rebuild
+    (rompe Twelve-Factor / Build Once Deploy Anywhere) y suele traer localhost
+    de desarrollo a la imagen.
+    Remediacion: URL relativa (`/api/tutorials`) detras de Ingress/Route, o
+    assets/config.json + provideAppInitializer / APP_INITIALIZER; inyectar el
+    host con ConfigMap/envsubst al arrancar el contenedor nginx/SSR.
+  when:
+    or:
+      # Preferir src/app (excluye environments/); filecontent es por línea
+      - builtin.filecontent:
+          filePattern: ".*/src/app/.*\\.(ts|js)$"
+          pattern: "(?i)(const|let|var)\\s+\\w*(baseUrl|apiUrl|backendUrl|serverUrl|apiBase|API_URL|BASE_URL)\\w*\\s*=\\s*['\"]https?://"
+      - builtin.filecontent:
+          filePattern: ".*/src/app/.*\\.(ts|js)$"
+          pattern: "(?i)(baseUrl|apiUrl|backendUrl|serverUrl|apiBaseUrl)\\s*[:=]\\s*['\"]https?://[^'\"]+['\"]"
+      - builtin.filecontent:
+          filePattern: ".*/src/app/.*\\.(ts|js)$"
+          pattern: "(?i)\\.http\\.(get|post|put|patch|delete)\\s*\\(\\s*[`'\"]https?://"
